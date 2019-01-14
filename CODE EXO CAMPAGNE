@@ -1,0 +1,277 @@
+import os
+import os.path
+import urllib.request
+import smtplib
+from tkinter.filedialog import askopenfilename
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import tkinter.ttk as ttk
+from tkinter import *
+#Stock de toute les bibliothèques utiliser dans ce programme
+
+def check_ping(hostname):
+    #test ping 
+    response = os.system("ping " + hostname)
+    # and then check the response...
+    if response == 0:
+        pingstatus = "Network Active"
+    else:
+        pingstatus = "Network Error"
+    return pingstatus
+
+
+def OpenFile(path):
+    #Fonction qui permet de chercher un fichier pour le fusionner a suis en cours de traitement
+    name = askopenfilename(initialdir="C:\TMAIL",
+                           filetypes=(("Text File", "*.txt"),("All Files","*.*")),
+                           title = "Choose a file."
+                           )
+    lines2 = open(os.path.join(name), 'r').readlines()
+    with open(os.path.join(path), 'a') as g:
+        for i in lines2 :
+            g.write(i)
+    g.close()
+
+def check_url(url1):
+    #Fonction permettant de tester la syntaxe d'un url
+    Lg = len(url1)
+    testd = (url1[0:7])
+    testd2 = (url1[0:8])
+    testf1 = (url1[Lg - 4:Lg])
+    testf2 = (url1[Lg - 3:Lg])
+#recupération des informations de l'url dans des variables
+    if testd == 'http://' and testf1 == '.com' or testf2 == '.fr':
+        return True
+    elif testd2 == 'https://' and testf1 == '.com' or testf2 == '.fr':
+        return True
+    else:
+        return False
+#test de la syntaxe si est ok retourne vrai sinon retourne faux
+
+def readF(path, nf):
+#fonction qui permet de lire un fichier avec le chemin du fichier a mettre en paramètre
+    with open(os.path.join(path, nf), 'r') as g:
+        print(g.read())
+    g.close()
+
+def writeF(path, tam):
+# fonction qui permet de écrire un fichier avec le chemin du fichier a mettre en paramètre
+    with open(os.path.join(path), 'w') as g:
+        g.write(tam)
+    g.close()
+
+def writeF2(path, tam):
+# fonction qui permet de écrire un fichier quand il y a déja des donnée dedans avec le chemin du fichier a mettre en paramètre
+    with open(os.path.join(path), 'a') as g:
+        g.write(tam)
+    g.close()
+
+def suppdoublon(path):
+#focntion qui permet de supprimer les doublon dans un fichier text
+    lines = open(os.path.join(path), 'r').readlines()
+    # transformation fichier en liste
+    lines2 = [i.replace('\n', '') for i in lines]
+    # enlever les \n
+    #print(lines2)
+    lines2 = set(lines2)
+    # SET enleve le doublon
+    lines2 = list(lines2)
+    with open(os.path.join(path), 'w') as g:
+        for element in lines2:
+            g.write(element + '\n')
+            # réécriture dans le fichier
+    g.close()
+
+def crawling(url,path):
+#Cette fonction permet de récuperer le code d'un page html puis de la traité pour récuperer que les mails
+    listeR = []
+    data = str(urllib.request.urlopen(url).read())
+    pos = data.find("mailto:")
+    maListe=[]
+    while pos != -1 :
+        data = data[pos:]
+        pos = data.find('"')
+        mail = data[0:pos]
+        listeR.append(mail[7:pos])
+        data = data[pos:]
+        pos = data.find("mailto:")
+#récupération des mail sur la page html
+        R = []  # future liste des adresses valides
+        E = []  # future liste des adresses invalides
+        reExt = re.compile(r"^[^<>]*<([^<>]+)>$|(^[^<>]+$)")
+        reVerif = re.compile(
+            r"^[a-zA-Z0-9_\-]+(\.[a-zA-Z0-9_\-]+)*@[a-zA-Z0-9_\-]+(\.[ a-zA-Z0-9_\-]+)*(\.[a-zA-Z]{2,3})$")
+    for ch in listeR :
+        # extraction de l'adresse même dans le cas 'yyyyy <xxxx@xxxx.xxx>'
+        a = reExt.findall(ch.strip())
+        if len(a) > 0:
+            adr = ''.join(a[0]).strip()
+        else:
+            adr = ''
+            # vérification de syntaxe de l'adresse mail extraite
+        if adr == '':
+            E.append(ch)
+        else:
+            if reVerif.match(adr) != None:
+                R.append(ch)
+            else:
+                E.append(ch)
+    with open(os.path.join(path), 'a') as g:
+        for i in R :
+            g.write(i +'\n')
+    g.close()
+# un fois les mail sont vérifier la fonction ecrit les mail valide dans le fichier text demander
+
+def FverifM (path):
+    #verifi la valdité des mail si elles sont pas valide celle ci les supprimes
+    R = []  # future liste des adresses valides
+    E = []  # future liste des adresses invalides
+    lines = open(os.path.join(path), 'r').readlines()
+    reExt = re.compile(r"^[^<>]*<([^<>]+)>$|(^[^<>]+$)")
+    reVerif = re.compile(r"^[a-zA-Z0-9_\-]+(\.[a-zA-Z0-9_\-]+)*@[a-zA-Z0-9_\-]+(\.[ a-zA-Z0-9_\-]+)*(\.[a-zA-Z]{2,3})$")
+    for ch in lines:
+        # extraction de l'adresse même dans le cas 'yyyyy <xxxx@xxxx.xxx>'
+        a = reExt.findall(ch.strip())
+        if len(a) > 0:
+            adr = ''.join(a[0]).strip()
+        else:
+            adr = ''
+                # vérification de syntaxe de l'adresse mail extraite
+        if adr == '':
+                E.append(ch)
+        else:
+            if reVerif.match(adr) != None:
+                R.append(ch)
+            else:
+                E.append(ch)
+    with open(os.path.join(path), 'w') as g:
+        for i in R:
+            g.write(i)
+    g.close()
+
+def sendmail(addfrom,addto,obj,body,MDP) :
+#fonction permettant l'envoie des mail 
+    msg = MIMEMultipart()
+    msg['From'] = addfrom
+    msg['To'] = addto
+    msg['Subject'] = obj
+    message = body
+    msg.attach(MIMEText(message))
+    mailserver = smtplib.SMTP('smtp.gmail.com', 587)
+    mailserver.ehlo()
+    mailserver.starttls()
+    mailserver.ehlo()
+    mailserver.login(addfrom, MDP)
+    mailserver.sendmail(addfrom, addto, msg.as_string())
+    mailserver.quit()
+
+def sendallmail(path,FROM,OBJT,MSG,MDP):
+#fonction pour envoie des mail via la liste dans le fichier (SEND-ALL)
+    MailF = open(os.path.join(path), 'r').readlines()
+    for i in MailF :
+        sendmail(FROM,i,OBJT,MSG,MDP)
+
+def fenetre1b1():
+    #Fonction pour boutton fenêtre1)
+    NF = str(FOK.get())
+    #recup  de l'entrer via get()
+    EXIST = os.path.isfile('C:\TMAIL'+"\\"+NF+".txt")
+    #test de la présence d'un fichier
+    if EXIST == True:
+        fenetre.destroy()
+        path = ('C:\TMAIL'+"\\"+NF+".txt")
+        fenetre2(path)
+        #Si presence ok pass fenêtre2
+    else:
+        with open(os.path.join('C:\TMAIL'+"\\"+NF+".txt"), 'w') as g:
+            g.write("")
+        g.close()
+        #Sinon crée le fichier puis pass fenêtre2
+    # Fonction pour boutton fenêtre1
+
+def fenetre3(path):
+    #fenetre3
+    #permet à l'utlisateur d'ecrire le mail 
+    fenetreP3 = Tk()
+    fenetreP3.title("Préparation du Mail")
+    fenetreP3.configure(background='turquoise1')
+    Txt1 = Label(fenetreP3, text="Expéditeur (GMAIL):", fg='red',  bg='turquoise1').grid(row=0, column=0)
+    recupD1=Entry(fenetreP3, width=50)
+    recupD1.grid(row=0, column=1)
+    Txt5 = Label(fenetreP3, text="Mots de Passe :", fg='red',  bg='turquoise1').grid(row=2, column=0)
+    recupD5=Entry(fenetreP3, width=50)
+    recupD5.grid(row=2, column=1)
+    Txt3 = Label(fenetreP3, text="Objet :", fg='red',  bg='turquoise1').grid(row=3, column=0)
+    recupD3=Entry(fenetreP3, width=50)
+    recupD3.grid(row=3, column=1)
+    Txt4 = Label(fenetreP3, text="Message :", fg='red',  bg='turquoise1').grid(row=4, column=0)
+    recupD4=Text(fenetreP3, width=50, height=5)
+    recupD4.grid(row=4, column=1)
+    Button(fenetreP3, text="OK", fg='red',  bg='turquoise1', command=lambda: [fenetre4(path, str(recupD5.get()), str(recupD1.get()), str(recupD3.get()), str(recupD4.get('1.0', 'end')))]).grid(row=5, column=1)
+    #envoie des données du mail a la fenetre 4 pour l'envoyer (nom-variable.get())
+    fenetreP3.mainloop()
+    
+
+def fenetre4(path, MDP, FROM, OBJT, MSG):
+    #fenêtre4
+    jjP4 = Tk()
+    jjP4.title("Envoie du Mail")
+    jjP4.configure(background='turquoise1')
+    hp = Label(jjP4, text="MAIL TEST", fg='red',  bg='turquoise1').grid(row=0, column=1)
+    hp2 = Label(jjP4, text="Destinataire :", fg='red',  bg='turquoise1').grid(row=1, column=0)
+    hp3 = Entry(jjP4)
+    hp3.grid(row=1, column=1)
+    #Entrer pour recuperer le mail destinataire
+    hp1 = Button(jjP4, text="SEND TEST", fg='red',  bg='turquoise1', command=lambda: [sendmail(FROM,str(hp3.get()),OBJT,MSG,MDP)]).grid(row=2, column=1)
+    #Boutton pour envoyer le mail de test
+    hp4 = Label(jjP4, text="############",  bg='turquoise1').grid(row=3,column=0)#Séparation
+    hp5= Label(jjP4, text="############",  bg='turquoise1').grid(row=3,column=1)#Séparation
+    hp6 = Label(jjP4, text="############",  bg='turquoise1').grid(row=3,column=2)##Séparation
+    hp7 = Label(jjP4, text="SEND LIST MAIL", fg='red',  bg='turquoise1').grid(row=4, column=1)#Label
+    hp8 = Button(jjP4, text="SEND ALL", fg='red',  bg='turquoise1', command=lambda: [sendallmail(path,FROM,OBJT,MSG,MDP)]).grid(row=5, column=1)
+    #Boutton pour envoye de mail via la liste dans le fichiercollinlm
+    jjP4.mainloop()
+    #fenêtre4
+
+def fenetre2(path):
+    #Fenêtre2
+    fenetreP2 = Tk()
+    fenetreP2.title("View of file")
+    fenetreP2.configure(background='turquoise1')
+    txt1 = Label(fenetreP2, text="Ma campagne :", fg='red',  bg='turquoise1').grid(row=0, column=0)
+    Button(fenetreP2, text="Dedoublonner", fg='red',  bg='turquoise1', command=lambda: [suppdoublon(path), fenetreP2.destroy(), fenetre2(path)]).grid(row=4, column=0)
+    #boutton pour le suppression des données
+    Button(fenetreP2, text="Mail Valide", fg='red',  bg='turquoise1', command=lambda: [FverifM(path),fenetreP2.destroy(),fenetre2(path)]).grid(row=4, column=1)
+    #boutton pour la verification de mail valide
+    Button(fenetreP2, text="Import CSV", fg='red',  bg='turquoise1', command=lambda: [OpenFile(path), fenetreP2.destroy(),fenetre2(path)]).grid(row=2, column=0)
+    #boutton pour la fusion des de docs.txt
+    Button(fenetreP2, text="Import URL", fg='red',  bg='turquoise1', command=lambda: [crawling(Rd2.get(),path),fenetreP2.destroy(),fenetre2(path)]).grid(row=3, column=0)
+    #Boutton pour le crawling via web
+    Rd2=Entry(fenetreP2)
+    Rd2.grid(row=3, column=1)
+    #Entrer pour récup le lien web pour recup les mail dessus
+    Button(fenetreP2, text="OK", fg='red',  bg='turquoise1', command=lambda: [fenetreP2.destroy(), fenetre3(path)]).grid(row=4, column=2)
+    #boutton pour passer a la fenêtre suivante
+    lines = open(os.path.join(path), 'r').readlines()
+    #transformation du fichier en liste
+    cb=ttk.Combobox(values=lines).grid(row=0, column=1)
+    #La liste déroulante
+    fenetreP2.mainloop()
+    #Fenêtre2
+
+#Fenêtre 1
+fenetre = Tk()
+test1000 = os.path.isdir('C:\TMAIL')
+if test1000 == False:
+    os.makedirs('C:\TMAIL')
+#vérification de la présence du dossier de stockage des fichier sinon création
+fenetre.title("Sélection du fichier")
+fenetre.configure(background='turquoise1')
+txt1 = Label(fenetre, text="Ma campagne", fg='red',  bg='turquoise1').grid(row=0, column=6)
+Button(fenetre, text="OK", fg='red',  bg='turquoise1', command=fenetre1b1).grid(row=3, column=6)
+#boutton pour passer a la fenetre suivante et recup les path du fichier choisi ou il crée un new fichier
+FOK = Entry(fenetre)
+FOK.grid(row=1, column=6)
+#Entrer pour recup le nom du fichier
+fenetre.mainloop()
+#Fenêtre 1
